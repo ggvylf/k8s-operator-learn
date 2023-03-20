@@ -30,8 +30,9 @@ func main() {
 		panic(err.Error())
 	}
 
-	// 初始化restclinet
-	config.GroupVersion = &metav1.SchemeGroupVersion
+	// 填充config
+	// 需要填充 GV APIPath NegotiatedSerializer
+	config.GroupVersion = &corev1.SchemeGroupVersion
 	config.NegotiatedSerializer = scheme.Codecs
 	config.APIPath = "/api"
 	restclient, err := rest.RESTClientFor(config)
@@ -40,9 +41,17 @@ func main() {
 		fmt.Println("create restclient failed,err=", err)
 	}
 
-	// 查询pod信息
-	// 需要提供ns和pod的名字
-	//
+	// Read
+	// GET /api/v1/namespaces/{namespace}/pods/{name}
+	pod := &corev1.Pod{}
+	err = restclient.Get().Namespace("kube-system").Resource("pods").Name("calico-node-9bc67").Do(context.TODO()).Into(pod)
+	if err != nil {
+		fmt.Println("get pod failed,err=", err)
+	}
+	fmt.Println(pod.Name, pod.Namespace)
+
+	// List
+	// GET /api/v1/namespaces/{namespace}/pods
 	pods := corev1.PodList{}
 	err = restclient.Get().
 		Namespace("kube-system").

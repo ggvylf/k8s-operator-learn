@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -37,7 +37,7 @@ func main() {
 	// 查询pod信息
 	// 需要提供ns和pod的名字
 
-	pod, err := clientset.CoreV1().Pods("kube-system").Get(context.TODO(), "calico-node-9bc67", v1.GetOptions{})
+	pod, err := clientset.CoreV1().Pods("kube-system").Get(context.TODO(), "calico-node-9bc67", metav1.GetOptions{})
 	if err != nil {
 		fmt.Println("get pod failed,err=", err)
 	}
