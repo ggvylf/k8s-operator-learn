@@ -1,4 +1,4 @@
-module github.com/ggvylf/learngo/k8s-operator-learn
+module k8s-operator-learn
 
 go 1.19
 
