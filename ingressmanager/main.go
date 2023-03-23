@@ -1,8 +1,9 @@
 package main
 
 import (
-	"k8s-operator-learn/ingressmanager/controller"
 	"log"
+
+	"k8s-operator-learn/ingressmanager/controller"
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"

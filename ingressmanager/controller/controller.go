@@ -120,7 +120,11 @@ func (c *controller) syncService(key string) error {
 		return err
 	}
 
-	// 从service.spec.Annotations中是否能获取到约定的字段，这里是ingress/http
+	// 从service.meta.Annotations中是否能获取到约定的字段，这里是ingress/http
+	// metadata:
+	//   annotations:
+	//     ingress/http: "true"
+
 	_, ok := service.GetAnnotations()["ingress/http"]
 
 	// 查找是否有对应svc的ingress
@@ -184,6 +188,25 @@ func (c *controller) buildIngress(service *corev1.Service) *networkingv1.Ingress
 	}
 
 	// 填充ingress
+	// ingress样例
+	// 	apiVersion: networking.k8s.io/v1
+	// kind: Ingress
+	// metadata:
+	//   name: ingress-myservicea
+	// spec:
+	//   rules:
+	//   - host: myservicea.foo.org
+	//     http:
+	//       paths:
+	//       - path: /
+	//         pathType: Prefix
+	//         backend:
+	//           service:
+	//             name: myservicea
+	//             port:
+	//               number: 80
+	//   ingressClassName: nginx
+
 	ingress.Name = service.Name
 	ingress.Namespace = service.Namespace
 	pathType := networkingv1.PathTypePrefix
