@@ -1,62 +1,48 @@
-/*
-Copyright 2023.
+[TOC]
+## 初始化项目
+webhook根据需求生成
+```shell
+# 项目初始化
+kubebuilder init --domain example.com 
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+# controller
+kubebuilder create api --group ingress --version v1 --kind App
 
-    http://www.apache.org/licenses/LICENSE-2.0
+# webhook
+kubebuilder create webhook --group ingress --version v1 --kind App --defaulting --programmatic-validation --conversion
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+```
+## 增加crd需要的字段
+修改app_types.go文件，
+api/v1/app_types.go
+```go
+type AppSpec struct {
+	// 镜像
+	Image string `json:"image"`
+	// 副本属
+	Replicas int64 `json:"replicas"`
 
-package controllers
-
-import (
-	"context"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	ingressv1 "kubebuilder-demo/api/v1"
-	"kubebuilder-demo/controllers/utils"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	netv1 "k8s.io/api/networking/v1"
-)
-
-// AppReconciler reconciles a App object
-type AppReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
+	// 是否自动创建tag
+	EnableIngress bool `json:"enable_ingress,omitempty"`
+	EnableService bool `json:"enable_service"`
 }
+```
 
-//+kubebuilder:rbac:groups=ingress.example.com,resources=apps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=ingress.example.com,resources=apps/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=ingress.example.com,resources=apps/finalizers,verbs=update
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+重新生成crd
+```shell
+make manifests
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the App object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
+```
+
+可以在config目录下查看生成的crd文件和rbac文件以及webhook文件
+
+
+## 自己实现各种资源的期望状态
+实现Reconcile逻辑
+
+修改controller文件
+controllers/app_controller.go
+```go
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -74,7 +60,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// Deployment的处理
 	// 根据App中的内容初始化Deployment，这里使用模板文件来创建资源，暂时不用构造appsv1.Deployment
-	deployment := utils.NewDeployment(app)
+	deployment := utils.NewDepoyment(app)
 	// 设置资源的OwnerReference
 	err = controllerutil.SetControllerReference(app, deployment, r.Scheme)
 	if err != nil {
@@ -93,16 +79,12 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		// 资源已存在，update
 	} else {
-		// image或合适replicas不一致的时候才更新
-		if app.Spec.Replicas != *deployment.Spec.Replicas && app.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image {
-			err := r.Update(ctx, deployment)
-			if err != nil {
+		err := r.Update(ctx, deployment)
+		if err != nil {
 
-				logger.Error(err, "update deployment failed")
-				return ctrl.Result{}, err
-			}
+			logger.Error(err, "update deployment failed")
+			return ctrl.Result{}, err
 		}
-
 	}
 
 	//Service的处理
@@ -173,7 +155,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	return ctrl.Result{}, nil
 }
+```
 
+把对应资源添加到Manager中
+controllers/app_controller.go
+```go
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
@@ -184,3 +170,45 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Complete(r)
 }
+```
+
+## 内建资源使用模板生成
+相关代码在controllers/utils/resource.go
+模板文件在controllers/template下
+
+## 内建资源增加rbac
+controllers/app_controller.go
+```go
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+
+```
+
+## 构建docker镜像
+```shell
+nercictl build -t app-controller:v0.0.1 
+
+```
+
+## 部署到k8s中
+```shell
+IMG=xxxxx make deploy
+
+```
+
+
+## k8s中验证
+cr
+```yaml
+apiVersion: ingress.example.com/v1
+kind: App
+metadata:
+  name: app-sample
+spec:
+  image: nginx
+  replicas: 1
+  enable_ingress: false #默认值为false，需求为：设置为反向值;为true时，enable_service必须为true
+  enable_service: false
+
+```
