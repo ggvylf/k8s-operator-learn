@@ -61,7 +61,6 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	logger := log.FromContext(ctx)
 
 	// App的处理
-
 	// 初始化空的App
 	app := &ingressv1.App{}
 	// 从指定ns中获取App的期望状态
@@ -70,11 +69,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	return ctrl.Result{}, nil
 
 	// Deployment的处理
 	// 根据App中的内容初始化Deployment，这里使用模板文件来创建资源，暂时不用构造appsv1.Deployment
 	deployment := utils.NewDeployment(app)
+
 	// 设置资源的OwnerReference
 	err = controllerutil.SetControllerReference(app, deployment, r.Scheme)
 	if err != nil {
