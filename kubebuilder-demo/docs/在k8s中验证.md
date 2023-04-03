@@ -3,9 +3,10 @@
 
 # 验证controller
 需要提前安装cert-manager
-image使用bitnami/cert-manager-webhook:1.11.0
+image使用maslennikovyv//cert-manager-webhook:v1.11.0
+注意替换相关的image
 ```shell
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.0/cert-manager.yaml
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
 
 ```
 
