@@ -2,8 +2,9 @@
 # 引用
 
 # 验证controller
-需要提前安装cert-manager
+## 安装cert-manager
 image使用maslennikovyv//cert-manager-webhook:v1.11.0
+
 注意替换相关的image
 ```shell
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
@@ -31,7 +32,7 @@ kubectl apply -f config/samples
 ```
 
 ## k8s不在本地的情况
-如有必要制定版本，修改makefile
+如有必要指定bin文件的版本，修改makefile
 ```shell
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
@@ -46,7 +47,7 @@ make install
 这里实际上执行的是，由于本地没有kubectl，这里把kustomize调用kubectl apply改成导出到文件，后续手工执行
 ```shell
 /home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/crd |tee  config/crd/bases/a.yaml
+/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/crd |tee  docs/makeinstallout.yaml
 ```
 
 构建镜像
@@ -79,13 +80,36 @@ nerdctl --namespace k8s.io build -t app-controller:v0.0.1 . -f
 
 部署
 ```shell
-
 IMG=app-controller:v0.0.1 make deploy
 ```
+
 实际上执行的是
 ```shell
+/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+cd config/manager && /home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize edit set image controller=app-controller:v0.0.1
+/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/default | tee  docs/makedeployout.yaml
+```
+
+会修改config/manager/kustomization.yaml中镜像的名字和版本
+```shell
+resources:
+- manager.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: app-controller
+  newTag: v0.0.1
+
 
 ```
+
+这里执行报错了，这里应该是生成文件去部署的
+```shell
+/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/default 
+
+```
+
 
 
 

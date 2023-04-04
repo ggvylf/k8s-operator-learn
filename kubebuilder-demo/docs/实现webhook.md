@@ -39,8 +39,9 @@ config/default/webhookcainjection_patch.yaml 为webhook server注入caBoundle
 注入caBoundle由cert-manager的ca-injector 组件实现
 
 
-## 修改config/default/kustomization.yaml启用webhook
-```go
+## 修改配置文件启用webhook
+config/default/kustomization.yaml
+```yaml
 bases:
 - ../webhook
 - ../certmanager
@@ -78,6 +79,33 @@ vars:
    version: v1
    name: webhook-service
 ```
+config/crd/kustomization.yaml
+```yaml
+# This kustomization.yaml is not intended to be run by itself,
+# since it depends on service name and namespace that are out of this kustomize package.
+# It should be run by config/default
+resources:
+- bases/ingress.example.com_apps.yaml
+#+kubebuilder:scaffold:crdkustomizeresource
+
+patchesStrategicMerge:
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
+# patches here are for enabling the conversion webhook for each CRD
+- patches/webhook_in_apps.yaml
+#+kubebuilder:scaffold:crdkustomizewebhookpatch
+
+# [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
+# patches here are for enabling the CA injection for each CRD
+- patches/cainjection_in_apps.yaml
+#+kubebuilder:scaffold:crdkustomizecainjectionpatch
+
+# the following config is for teaching kustomize how to do kustomization for CRDs.
+configurations:
+- kustomizeconfig.yaml
+
+
+```
+
 
 ## 配置EnableIngress字段的默认值
 api/v1/app_webhook.go
