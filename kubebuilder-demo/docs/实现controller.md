@@ -3,13 +3,13 @@
 webhook根据需求生成
 ```shell
 # 项目初始化
-kubebuilder init --domain example.com 
+kubebuilder init --domain example.com --repo kubebuilder-demo --plugins=go/v4-alpha
 
 # controller
 kubebuilder create api --group ingress --version v1 --kind App
 
 # webhook
-kubebuilder create webhook --group ingress --version v1 --kind App --defaulting --programmatic-validation --conversion
+kubebuilder create webhook --group ingress --version v1 --kind App --defaulting --programmatic-validation
 
 ```
 ## 增加crd需要的字段

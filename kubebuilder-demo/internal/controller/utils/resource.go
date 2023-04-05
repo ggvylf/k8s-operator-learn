@@ -14,7 +14,7 @@ import (
 // 根据App的内容和模板名称，填充模板并返回
 func parseTemplate(tmplName string, app *myappv1.App) []byte {
 	// 文件中读取模板
-	tmpl, err := template.ParseFiles("controllers/template" + tmplName + "yml")
+	tmpl, err := template.ParseFiles("internal/controller/template/" + tmplName + ".yml")
 	if err != nil {
 		panic(err)
 	}

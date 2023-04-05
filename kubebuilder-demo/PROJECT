@@ -4,7 +4,7 @@
 # More info: https://book.kubebuilder.io/reference/project-config.html
 domain: example.com
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4-alpha
 projectName: kubebuilder-demo
 repo: kubebuilder-demo
 resources:
@@ -18,7 +18,6 @@ resources:
   path: kubebuilder-demo/api/v1
   version: v1
   webhooks:
-    conversion: true
     defaulting: true
     validation: true
     webhookVersion: v1

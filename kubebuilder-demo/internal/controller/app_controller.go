@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	ingressv1 "kubebuilder-demo/api/v1"
-	"kubebuilder-demo/controllers/utils"
+	"kubebuilder-demo/internal/controller/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -61,6 +61,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	logger := log.FromContext(ctx)
 
 	// App的处理
+
 	// 初始化空的App
 	app := &ingressv1.App{}
 	// 从指定ns中获取App的期望状态
@@ -73,7 +74,6 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Deployment的处理
 	// 根据App中的内容初始化Deployment，这里使用模板文件来创建资源，暂时不用构造appsv1.Deployment
 	deployment := utils.NewDeployment(app)
-
 	// 设置资源的OwnerReference
 	err = controllerutil.SetControllerReference(app, deployment, r.Scheme)
 	if err != nil {
@@ -92,16 +92,12 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		}
 		// 资源已存在，update
 	} else {
-		// image或合适replicas不一致的时候才更新
-		if app.Spec.Replicas != *deployment.Spec.Replicas && app.Spec.Image != deployment.Spec.Template.Spec.Containers[0].Image {
-			err := r.Update(ctx, deployment)
-			if err != nil {
+		err := r.Update(ctx, deployment)
+		if err != nil {
 
-				logger.Error(err, "update deployment failed")
-				return ctrl.Result{}, err
-			}
+			logger.Error(err, "update deployment failed")
+			return ctrl.Result{}, err
 		}
-
 	}
 
 	//Service的处理

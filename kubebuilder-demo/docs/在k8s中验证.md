@@ -11,6 +11,13 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 
 ```
 
+## 如有必要指定bin文件的版本，修改makefile
+```shell
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.0.1
+CONTROLLER_TOOLS_VERSION ?= v0.11.1
+```
+
 ## k8s在本地的情况
 ```shell
 # 初始化crd
@@ -32,123 +39,150 @@ kubectl apply -f config/samples
 ```
 
 ## k8s不在本地的情况
-如有必要指定bin文件的版本，修改makefile
+需要先生成yaml文件，最后再构建image
+
+修改makefile，把原本的install和deploy的操作替换成导出yaml文件
+
 ```shell
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.0.1
-CONTROLLER_TOOLS_VERSION ?= v0.11.1
+mkdir -p outputyaml
+
+vim Makefile
+.PHONY: myinstall
+myinstall: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd > outputyaml/makeinstall.yaml
+
+.PHONY: mydeploy
+mydeploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default > outputyaml/makedeploy.yaml
+
+.PHONY: mydocker-build
+mydocker-build: test ## Build docker image with the manager.
+
 ```
 
-初始化crd
+这里要替换下kube-rbac-proxy的image
+config/default/manager_auth_proxy_patch.yaml
 ```shell
-make install
+image: hubimage/kube-rbac-proxy:v0.14.0
 ```
 
-这里实际上执行的是，由于本地没有kubectl，这里把kustomize调用kubectl apply改成导出到文件，后续手工执行
+生成crd和operator的yaml文件
 ```shell
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/crd |tee  docs/makeinstallout.yaml
+# crd
+make myinstall
+
+# operator
+IMG=app-controller:v0.0.1 make mydeploy
 ```
 
-构建镜像
+修改yaml文件
 ```shell
-IMG=app-controller:v0.0.1 make docker-build
+# null这里应该是null值而不是string
+creationTimestamp: "null"
+
+# 注释掉
+#runAsNonRoot: true
+
 ```
 
-实际执行的是
+
+构建镜像前的准备
 ```shell
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
-go fmt ./...
-go vet ./...
-docker build -t app-controller:v0.0.1 .
+make mydocker-build
 ```
 
-拷贝代码到k8s环境下制作镜像
 修改Dockerfile 配置镜像
 ```shell
+RUN  GOPROXY=https://goproxy.cn go mod download
+
 FROM alpine:3.17
 WORKDIR /
 COPY --from=builder /workspace/manager .
 ENTRYPOINT ["/manager"]
 ```
 
+
+拷贝代码到有docker或者是有containerd的环境下
+构建镜像
 ```shell
-nerdctl --namespace k8s.io build -t app-controller:v0.0.1 . -f 
+nerdctl -n k8s.io image ls|grep app
+nerdctl -n k8s.io rmi app-controller:v0.0.1
+nerdctl --namespace k8s.io build --no-cache -t app-controller:v0.0.1 . 
 ```
 
 
 部署
 ```shell
-IMG=app-controller:v0.0.1 make deploy
+# 创建crd
+kubectl apply -f outputyaml/makeinstall.yaml
+
+# 创建operator
+kubectl apply -f outputyaml/makedeploy.yaml
 ```
 
-实际上执行的是
-```shell
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-cd config/manager && /home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize edit set image controller=app-controller:v0.0.1
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/default | tee  docs/makedeployout.yaml
-```
-
-会修改config/manager/kustomization.yaml中镜像的名字和版本
-```shell
-resources:
-- manager.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-images:
-- name: controller
-  newName: app-controller
-  newTag: v0.0.1
-
-
-```
-
-这里执行报错了，这里应该是生成文件去部署的
-```shell
-/home/ggvylf/go/src/github.com/ggvylf/k8s-operator-learn/kubebuilder-demo/bin/kustomize build config/default 
-
-```
 
 
 
 
 # 验证WebHook
-## k8s在本地
+```shell
+kubectl get apps.ingress.example.com -A
+```
 
+
+## k8s在本地
 修改cr并验证
 ```shell
 # 都是false 创建失败
-apiVersion: ingress.baiding.tech/v1beta1
+apiVersion: ingress.example.com/v1
 kind: App
 metadata:
+  labels:
+    app.kubernetes.io/name: app
+    app.kubernetes.io/instance: app-sample
+    app.kubernetes.io/part-of: kubebuilder-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-demo
   name: app-sample
 spec:
   image: nginx:latest
-  replicas: 3
+  replicas: 1
   enable_ingress: false #会被修改为true
   enable_service: false #将会失败
 
 # 都是true 创建成功
-apiVersion: ingress.baiding.tech/v1beta1
+apiVersion: ingress.example.com/v1
 kind: App
 metadata:
+  labels:
+    app.kubernetes.io/name: app
+    app.kubernetes.io/instance: app-sample
+    app.kubernetes.io/part-of: kubebuilder-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-demo
   name: app-sample
 spec:
   image: nginx:latest
-  replicas: 3
+  replicas: 1
   enable_ingress: false #会被修改为true
   enable_service: true #成功
 
 
 # 都是false 创建成功
-apiVersion: ingress.baiding.tech/v1beta1
+apiVersion: ingress.example.com/v1
 kind: App
 metadata:
+  labels:
+    app.kubernetes.io/name: app
+    app.kubernetes.io/instance: app-sample
+    app.kubernetes.io/part-of: kubebuilder-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-demo
   name: app-sample
 spec:
   image: nginx:latest
-  replicas: 3
+  replicas: 1
   enable_ingress: true #会被修改为false
   enable_service: false #成功
 

@@ -45,9 +45,6 @@ func (r *App) Default() {
 	applog.Info("default", "name", r.Name)
 
 	// TODO(user): fill in your defaulting logic.
-
-	// 覆盖EnableIngress的默认值，改成相反的
-	r.Spec.EnableIngress = !r.Spec.EnableIngress
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -61,7 +58,6 @@ func (r *App) ValidateCreate() error {
 
 	// TODO(user): fill in your validation logic upon object creation.
 	// return nil
-
 	// 调用自己的校验逻辑
 	return r.validateApp()
 }
