@@ -107,8 +107,7 @@ ENTRYPOINT ["/manager"]
 构建镜像
 ```shell
 nerdctl -n k8s.io image ls|grep app
-nerdctl -n k8s.io rmi app-controller:v0.0.1
-nerdctl --namespace k8s.io build --no-cache -t app-controller:v0.0.1 . 
+nerdctl -n k8s.io rmi app-controller:v0.0.1 && nerdctl --namespace k8s.io build --no-cache -t app-controller:v0.0.1 . 
 ```
 
 
@@ -123,8 +122,6 @@ kubectl apply -f outputyaml/makedeploy.yaml
 
 
 
-
-
 # 验证WebHook
 ```shell
 kubectl get apps.ingress.example.com -A
@@ -133,24 +130,17 @@ kubectl get apps.ingress.example.com -A
 
 ## k8s在本地
 修改cr并验证
-```shell
-# 都是false 创建失败
-apiVersion: ingress.example.com/v1
-kind: App
-metadata:
-  labels:
-    app.kubernetes.io/name: app
-    app.kubernetes.io/instance: app-sample
-    app.kubernetes.io/part-of: kubebuilder-demo
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: kubebuilder-demo
-  name: app-sample
-spec:
-  image: nginx:latest
-  replicas: 1
-  enable_ingress: false #会被修改为true
-  enable_service: false #将会失败
 
+EnableIngress的值会被修改为相反值
+情况1： EnableIngress是true EnableService是true，创建成功，查看资源EnableIngress被修改为false
+情况2： EnableIngress是false  EnableService是true，创建成功，查看资源EnableIngress被修改为true
+情况3  EnableService是false 无论EnableService是什么值 创建失败
+
+
+
+EnableIngress为true, EnableService必须是true
+EnableService是false，EnableIngress是true，报错创建失败，
+```shell
 # 都是true 创建成功
 apiVersion: ingress.example.com/v1
 kind: App
@@ -185,6 +175,23 @@ spec:
   replicas: 1
   enable_ingress: true #会被修改为false
   enable_service: false #成功
+
+# 都是false 创建失败
+apiVersion: ingress.example.com/v1
+kind: App
+metadata:
+  labels:
+    app.kubernetes.io/name: app
+    app.kubernetes.io/instance: app-sample
+    app.kubernetes.io/part-of: kubebuilder-demo
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-demo
+  name: app-sample
+spec:
+  image: nginx:latest
+  replicas: 1
+  enable_ingress: false #会被修改为true
+  enable_service: false #将会失败
 
 ```
 

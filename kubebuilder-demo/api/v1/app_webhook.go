@@ -84,8 +84,10 @@ func (r *App) ValidateDelete() error {
 // 针对App资源做校验
 func (r *App) validateApp() error {
 
-	// EnableIngress为true的时候EnableService必须是true
-	// EnableService是false，EnableIngress是true，报错创建失败，
+	// 情况1： EnableIngress是true EnableService是true，创建成功，查看资源EnableIngress被修改为false
+	// 情况2： EnableIngress是false  EnableService是true，创建成功，查看资源EnableIngress被修改为true
+	// 情况3  EnableService是false 无论EnableIngress是什么值 创建失败
+
 	if !r.Spec.EnableService && r.Spec.EnableIngress {
 		return apierrors.NewInvalid(GroupVersion.WithKind("App").GroupKind(), r.Name,
 			field.ErrorList{

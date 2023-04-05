@@ -94,7 +94,6 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	} else {
 		err := r.Update(ctx, deployment)
 		if err != nil {
-
 			logger.Error(err, "update deployment failed")
 			return ctrl.Result{}, err
 		}
@@ -120,7 +119,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	} else {
 		// 资源已存在,同时EnableService为true 跳过
 		if app.Spec.EnableService {
-			logger.Info("skip update service")
+			err := r.Update(ctx, service)
+			if err != nil {
+				logger.Error(err, "update service failed")
+				return ctrl.Result{}, err
+			}
 
 			// 资源已存在,同时EnableService为false，删除资源
 		} else {
@@ -143,6 +146,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// 查看同名资源是否存在，没有就create，有就update，，同时还需要考虑flag的问题
 	i := &netv1.Ingress{}
 	err = r.Get(ctx, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, i)
+
 	// 资源不存在同时EnableIngress为true
 	if errors.IsNotFound(err) && app.Spec.EnableIngress {
 		err := r.Create(ctx, ingress)
@@ -153,7 +157,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	} else {
 		// 资源已存在,同时EnableIngress为true 跳过
 		if app.Spec.EnableIngress {
-			logger.Info("skip update ingress")
+			err := r.Update(ctx, ingress)
+			if err != nil {
+				logger.Info("update ingress failed")
+				return ctrl.Result{}, err
+			}
 
 			//资源已存在,同时EnableIngress为false 删除资源
 		} else {

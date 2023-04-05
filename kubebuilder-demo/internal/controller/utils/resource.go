@@ -56,7 +56,7 @@ func NewService(app *myappv1.App) *corev1.Service {
 // 根据模板生成Ingress
 func NewIngress(app *myappv1.App) *netv1.Ingress {
 	i := &netv1.Ingress{}
-	err := yaml.Unmarshal(parseTemplate("service", app), i)
+	err := yaml.Unmarshal(parseTemplate("ingress", app), i)
 	if err != nil {
 
 		panic(err)

@@ -5,14 +5,14 @@ metadata:
   namespace: {{.ObjectMeta.Namespace}}
 spec:
   rules:
-    - host: {{.ObjectMeta.Name}}.baiding.tech
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{.ObjectMeta.Name}}
-                port:
-                  number: 8080
+  - host: {{.ObjectMeta.Name}}.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{.ObjectMeta.Name}}
+            port:
+              number: 8080
   ingressClassName: nginx
