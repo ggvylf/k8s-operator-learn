@@ -18,7 +18,8 @@
 - [ ] etcd operator
   https://github.com/coreos/etcd-operator
 - [ ] [harbor operator](https://github.com/goharbor/harbor-operator)
-- [ ] [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator)
+- [ ] prometheus-operator
+  https://github.com/prometheus-operator/prometheus-operator
 - [ ] [istio operator](https://github.com/istio/operator)
 - [ ] [jaeger operator](https://github.com/jaegertracing/jaeger-operator)
 - [ ] [logging operator](https://github.com/banzaicloud/logging-operator)
